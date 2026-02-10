@@ -1,5 +1,5 @@
 export const useAuth = () => {
-  const user = userState("user", () => null);
+  const user = useState("user", () => null);
   const isLoggedIn = computed(() => !!user.value);
 
   const login = async (email, password) => {
