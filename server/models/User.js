@@ -1,29 +1,56 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import validator from "validator";
 
-const userSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
-    trim: true,
+const userSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      maxlength: [254, "Email is too long"],
+      validate: {
+        validator: function (v) {
+          return validator.isEmail(v);
+        },
+        message: "Invalid email format",
+      },
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [8, "Password must be at least 8 characters"],
+      maxlength: [128, "Password is too long"],
+      select: false,
+    },
+    username: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: [1, "Name must be at least 1 character"],
+      maxlength: [100, "Name is too long"],
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+      immutable: true,
+    },
   },
-  password: {
-    type: String,
-    required: true,
-    minlength: 8,
+  {
+    strict: true, // Reject fields not in schema
+    strictQuery: true, // Reject query operators not in schema
+    timestamps: true,
+    toJSON: {
+      transform: function (doc, ret) {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+      },
+    },
   },
-  username: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+);
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;

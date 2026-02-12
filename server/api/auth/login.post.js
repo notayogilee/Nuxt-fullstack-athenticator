@@ -1,17 +1,51 @@
 import User from "../../models/User";
 import jwt from "jsonwebtoken";
+import { validateEmail, validatePassword } from "../../utils/validation";
+import { sanitizeObject, ensureString } from "../../utils/sanitize";
 
 export default defineEventHandler(async (event) => {
-  const { email, password } = await readBody(event);
+  const body = await readBody(event);
+  const sanitizedBody = sanitizeObject(body);
 
-  if (!email || !password) {
+  if (!sanitizedBody || typeof sanitizedBody !== "object") {
     throw createError({
       statusCode: 400,
-      message: "Please enter your email and password",
+      message: "Invalid request body",
     });
   }
 
-  const user = await User.findOne({ email });
+  let { email, password } = sanitizedBody;
+
+  // Ensure inputs are strings, not objects
+  try {
+    email = ensureString(email);
+    password = ensureString(password);
+  } catch (error) {
+    throw createError({
+      statusCode: 400,
+      message: "Invalid credentials",
+    });
+  }
+
+  const emailValidation = validateEmail(email);
+  if (!emailValidation.valid) {
+    throw createError({
+      statusCode: 400,
+      message: "Invalid credentials",
+    });
+  }
+
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.valid) {
+    throw createError({
+      statusCode: 400,
+      message: "Invalid credentials",
+    });
+  }
+
+  const user = await User.findOne({
+    email: emailValidation.sanitized.toLowerCase(),
+  }).select("+password");
 
   if (!user || !(await user.comparePassword(password))) {
     throw createError({
@@ -20,7 +54,8 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+  const config = useRuntimeConfig();
+  const token = jwt.sign({ userId: user._id.toString() }, config.JWT_SECRET, {
     expiresIn: "7d",
   });
 

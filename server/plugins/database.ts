@@ -1,10 +1,18 @@
-import mongoose from "mongoose";
+import mongoose, { sanitizeFilter } from "mongoose";
 
 export default defineNitroPlugin(async (nitroApp) => {
   const config = useRuntimeConfig();
 
   try {
-    await mongoose.connect(config.MONGO_URI);
+    (await mongoose.connect(config.MONGO_URI),
+      {
+        sanitizeFilter: true, // Sanitize filter queries
+        autoIndex: process.env.NODE_ENV !== "production",
+      });
+
+    mongoose.set("strict", true);
+    mongoose.set("strictQuery", true);
+
     console.log("Connected to MongoDB!");
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error}`);
